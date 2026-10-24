@@ -24,18 +24,18 @@ docs/architecture.md    流程与日期逻辑
 
 ## 本地开发
 
-需要 Node.js 22.13 或更新版本：
+包管理用 Bun 1.4。页面服务和测试仍运行在 Node.js 22.13 或更新版本上，因为 Docker 使用 vinext 的 Node 平台，测试使用 `node --test`。
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 验证站点、API 与部署产物：
 
 ```bash
-npm test
-npm run test:deploy
+bun run test
+bun run test:deploy
 ```
 
 提供的只读路由：
@@ -68,8 +68,8 @@ CLOUDFLARE_ACCOUNT_ID
 本机也可以验证或部署：
 
 ```bash
-npm run build:worker
-npx wrangler deploy --config wrangler.api.jsonc
+bun run build:worker
+bunx wrangler deploy --config wrangler.api.jsonc
 ```
 
 ## Docker

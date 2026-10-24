@@ -2,18 +2,19 @@
   "name": "quote0-school-calendar",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.4.3",
   "engines": {
     "node": ">=22.13.0"
   },
   "scripts": {
     "dev": "vinext dev",
     "build": "vinext build",
-    "build:node": "VINEXT_PLATFORM=node npm run build",
-    "build:pages": "GITHUB_PAGES_BASE_PATH=/quote0-school-calendar/ npm run build && node scripts/build-pages.mjs",
+    "build:node": "VINEXT_PLATFORM=node bun run build",
+    "build:pages": "GITHUB_PAGES_BASE_PATH=/quote0-school-calendar/ bun run build && node scripts/build-pages.mjs",
     "build:worker": "wrangler deploy --dry-run --config wrangler.api.jsonc --outdir dist/worker-api",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
-    "test:deploy": "npm run build:pages && npm run build:worker && node --test tests/deployment-artifacts.test.mjs",
+    "test": "bun run build && node --test tests/rendered-html.test.mjs",
+    "test:deploy": "bun run build:pages && bun run build:worker && node --test tests/deployment-artifacts.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler"
   },
   "dependencies": {

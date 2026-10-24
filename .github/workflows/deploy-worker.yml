@@ -9,7 +9,7 @@ on:
       - "lib/**"
       - "wrangler.api.jsonc"
       - "package.json"
-      - "package-lock.json"
+      - "bun.lock"
       - ".github/workflows/deploy-worker.yml"
   workflow_dispatch:
 
@@ -21,11 +21,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+      - run: bun install --frozen-lockfile
       - name: Check deployment credentials
         id: credentials
         shell: bash
@@ -39,7 +41,7 @@ jobs:
             echo "ready=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Validate Worker bundle
-        run: npm run build:worker
+        run: bun run build:worker
       - name: Deploy Worker
         if: steps.credentials.outputs.ready == 'true'
         uses: cloudflare/wrangler-action@v3

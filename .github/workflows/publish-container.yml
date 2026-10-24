@@ -14,7 +14,7 @@ on:
       - ".dockerignore"
       - "docker-compose.yml"
       - "package.json"
-      - "package-lock.json"
+      - "bun.lock"
       - "vite.config.ts"
       - ".github/workflows/publish-container.yml"
   workflow_dispatch:
