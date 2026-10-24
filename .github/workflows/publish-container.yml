@@ -6,6 +6,7 @@ on:
     tags: ["v*"]
     paths:
       - "app/**"
+      - "data/**"
       - "lib/**"
       - "public/**"
       - "worker/**"

@@ -4,19 +4,23 @@
 
 [GitHub Pages 落地页](https://asahiart.github.io/quote0-school-calendar/) · [开源仓库](https://github.com/AsahiArt/quote0-school-calendar)
 
-项目只生成 Quote/0 Canvas 结构化布局，不再维护 Image API、Python CLI 或 ChatGPT Site 部署。
+项目只生成 Quote/0 Canvas 结构化布局，不再维护 Image API、Python CLI 或 ChatGPT Site 部署。设备发现、鉴权和推送交由 [MindReset 官方 Dot Skill](https://github.com/MindReset/dot_skill) 或官方 OpenAPI 工具处理，不在本仓库重复实现。
+
+流程、部署路径和日期判断见 [docs/architecture.md](docs/architecture.md)。
 
 ## 架构
 
 ```text
-lib/school-calendar.ts  上海校历数据和日期计算（唯一实现）
+data/school-calendar.json  校历区间和来源（唯一数据）
+lib/school-calendar.ts      日期计算（唯一实现）
 lib/quote0-api.ts       REST 响应和 Quote/0 Canvas 负载（唯一实现）
 app/                    GitHub Pages 落地页；Docker 同时复用其中的 API 路由
 worker/api.ts           Cloudflare Worker 的轻量部署适配器
 content-studio/         Quote/0 Content Studio 申报材料
+docs/architecture.md    流程与日期逻辑
 ```
 
-页面、Docker 和 Worker 都调用 `lib/` 中的共享模块，不各自复制校历数据或 Canvas 模板。设备发现、鉴权和推送交由 [MindReset 官方 Dot Skill](https://github.com/MindReset/dot_skill) 或官方 OpenAPI 工具处理，不在本仓库重复实现。
+页面、Docker 和 Worker 都调用 `lib/` 中的共享模块，不各自复制校历数据或 Canvas 模板。替换校历的方式见 [docs/architecture.md](docs/architecture.md#替换校历)。
 
 ## 本地开发
 
@@ -51,6 +55,8 @@ GET /api/quote0/canvas?date=YYYY-MM-DD
 ```text
 QUOTE0_API_BASE_URL=https://quote0-school-calendar-api.<workers-subdomain>.workers.dev
 ```
+
+没有这个变量时，页面仍展示接口路径，但不会把它们链到 GitHub Pages 上不存在的路由。
 
 自动部署 Worker 需要以下 GitHub Actions secrets：
 

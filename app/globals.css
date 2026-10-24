@@ -885,6 +885,30 @@ a {
   font-size: 13px;
 }
 
+.calendar-replace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.calendar-replace button {
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+}
+
+.calendar-replace small {
+  flex-basis: 100%;
+  color: var(--muted);
+}
+
 .source-note p {
   margin: 5px 0 0;
   color: var(--muted);

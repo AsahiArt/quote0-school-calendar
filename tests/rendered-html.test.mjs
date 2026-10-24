@@ -64,6 +64,15 @@ test("calendar API rejects impossible dates", async () => {
   assert.equal(body.error.code, "invalid_date");
 });
 
+test("calendar data endpoint returns the replaceable document", async () => {
+  const response = await request("/api/calendar-data", "application/json");
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("cache-control") ?? "", /no-store/);
+  const body = await response.json();
+  assert.equal(body.timezone, "Asia/Shanghai");
+  assert.equal(body.periods[0].id, "term-2025-1");
+});
+
 test("health endpoint reports a stateless service", async () => {
   const response = await request("/api/health", "application/json");
   assert.equal(response.status, 200);

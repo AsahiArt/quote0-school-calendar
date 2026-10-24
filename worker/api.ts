@@ -1,5 +1,6 @@
 import {
   calendarApi,
+  calendarDataApi,
   canvasApi,
   corsOptions,
   healthApi,
@@ -7,6 +8,7 @@ import {
 
 interface Env {
   LANDING_URL?: string;
+  CALENDAR_URL?: string;
 }
 
 const notFoundHeaders = {
@@ -30,11 +32,16 @@ export default {
     if (url.pathname === "/" || url.pathname === "/api/health") {
       return healthApi();
     }
+    const calendar = { url: env.CALENDAR_URL };
+    if (url.pathname === "/api/calendar-data") {
+      return calendarDataApi(calendar);
+    }
     if (url.pathname === "/api/calendar") {
-      return calendarApi(request);
+      return calendarApi(request, calendar);
     }
     if (url.pathname === "/api/quote0/canvas") {
       return canvasApi(request, {
+        ...calendar,
         landingUrl:
           env.LANDING_URL ??
           "https://asahiart.github.io/quote0-school-calendar/",

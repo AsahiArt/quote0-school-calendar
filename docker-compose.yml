@@ -11,4 +11,7 @@ services:
       HOST: 0.0.0.0
       PORT: 3000
       NEXT_PUBLIC_LANDING_URL: ${PUBLIC_URL:-http://localhost:3000}
+      CALENDAR_PATH: /calendar/school-calendar.json
+    volumes:
+      - ${CALENDAR_FILE:-./data/school-calendar.json}:/calendar/school-calendar.json:ro
     restart: unless-stopped

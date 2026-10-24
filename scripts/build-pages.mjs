@@ -28,5 +28,9 @@ await cp(clientDirectory, outputDirectory, { recursive: true });
 await writeFile(path.join(outputDirectory, "index.html"), html);
 await writeFile(path.join(outputDirectory, "404.html"), html);
 await writeFile(path.join(outputDirectory, ".nojekyll"), "");
+await cp(
+  path.join(root, "data", "school-calendar.json"),
+  path.join(outputDirectory, "school-calendar.json"),
+);
 
 console.log(outputDirectory);

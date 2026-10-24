@@ -5,6 +5,7 @@ import {
   calendarCacheControl,
   calendarSnapshot,
   dateFromKey,
+  parseCalendarDocument,
 } from "../lib/school-calendar.ts";
 
 test("teaching weeks run Monday-Sunday from the Monday on or before term start", () => {
@@ -57,6 +58,32 @@ test("dates after the last period are ended and do not stay on vacation", () => 
   assert.equal(snapshot.display.progressPercent, 100);
   assert.equal(snapshot.display.teachingWeek, null);
   assert.equal(snapshot.nextEvent, null);
+});
+
+test("a replacement calendar is parsed and used without the built-in periods", () => {
+  const document = parseCalendarDocument({
+    periods: [
+      {
+        id: "custom-term",
+        name: "春季学期",
+        eyebrow: "2028 学年",
+        start: "2028-02-01",
+        end: "2028-06-30",
+        weeks: 20,
+        type: "term",
+      },
+    ],
+  });
+  const snapshot = calendarSnapshot("2028-02-01", document.periods);
+  assert.equal(snapshot.range, "active");
+  assert.equal(snapshot.phase.id, "custom-term");
+  assert.equal(snapshot.display.primaryLabel, "开学第");
+  assert.equal(snapshot.display.primaryValue, 1);
+  assert.throws(() => parseCalendarDocument({ periods: [] }), (error: unknown) => {
+    assert.equal(error instanceof Error, true);
+    assert.equal((error as Error).message, "校历文件至少要有一个阶段");
+    return true;
+  });
 });
 
 test("calendarCacheControl keeps other dates long and today until Shanghai midnight", () => {

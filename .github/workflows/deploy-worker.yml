@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "worker/api.ts"
+      - "data/**"
       - "lib/**"
       - "wrangler.api.jsonc"
       - "package.json"

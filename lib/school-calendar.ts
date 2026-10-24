@@ -1,3 +1,5 @@
+import calendarFile from "../data/school-calendar.json" with { type: "json" };
+
 export type SchoolPeriod = {
   id: string;
   name: string;
@@ -42,79 +44,89 @@ export type CalendarSnapshot = {
 
 const DAY = 86_400_000;
 
-export const periods: SchoolPeriod[] = [
-  {
-    id: "term-2025-1",
-    name: "第一学期",
-    eyebrow: "2025 学年",
-    start: "2025-09-01",
-    end: "2026-01-30",
-    weeks: 22,
-    type: "term",
-  },
-  {
-    id: "winter-2026",
-    name: "寒假",
-    eyebrow: "2025 学年",
-    start: "2026-01-31",
-    end: "2026-03-01",
-    type: "vacation",
-    nextLabel: "春季开学",
-  },
-  {
-    id: "term-2025-2",
-    name: "第二学期",
-    eyebrow: "2025 学年",
-    start: "2026-03-02",
-    end: "2026-06-30",
-    weeks: 18,
-    type: "term",
-  },
-  {
-    id: "summer-2026",
-    name: "暑假",
-    eyebrow: "2025 学年",
-    start: "2026-07-01",
-    end: "2026-08-31",
-    type: "vacation",
-    nextLabel: "秋季开学",
-  },
-  {
-    id: "term-2026-1",
-    name: "第一学期",
-    eyebrow: "2026 学年",
-    start: "2026-09-01",
-    end: "2027-01-22",
-    weeks: 21,
-    type: "term",
-  },
-  {
-    id: "winter-2027",
-    name: "寒假",
-    eyebrow: "2026 学年",
-    start: "2027-01-23",
-    end: "2027-02-21",
-    type: "vacation",
-    nextLabel: "春季开学",
-  },
-  {
-    id: "term-2026-2",
-    name: "第二学期",
-    eyebrow: "2026 学年",
-    start: "2027-02-22",
-    end: "2027-06-30",
-    weeks: 19,
-    type: "term",
-  },
-  {
-    id: "summer-2027",
-    name: "暑假",
-    eyebrow: "2026 学年",
-    start: "2027-07-01",
-    end: "2027-08-31",
-    type: "vacation",
-  },
-];
+export type CalendarSource = {
+  name: string;
+  document: string;
+  url: string;
+  note: string;
+};
+
+export type CalendarDocument = {
+  timezone: "Asia/Shanghai";
+  source: CalendarSource;
+  periods: SchoolPeriod[];
+};
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function text(value: unknown, field: string) {
+  if (typeof value !== "string" || value.trim() === "") {
+    throw new Error(`校历文件缺少 ${field}`);
+  }
+  return value.trim();
+}
+
+function parsePeriod(value: unknown, index: number): SchoolPeriod {
+  const period = record(value);
+  if (!period) throw new Error(`第 ${index + 1} 个阶段不是对象`);
+  const start = text(period.start, "start");
+  const end = text(period.end, "end");
+  if (!isDateKey(start) || !isDateKey(end) || start > end) {
+    throw new Error(`第 ${index + 1} 个阶段的日期无效`);
+  }
+  if (period.type !== "term" && period.type !== "vacation") {
+    throw new Error(`第 ${index + 1} 个阶段的 type 必须是 term 或 vacation`);
+  }
+  let weeks: number | undefined;
+  if (period.weeks !== undefined) {
+    if (!Number.isInteger(period.weeks) || Number(period.weeks) < 1) {
+      throw new Error(`第 ${index + 1} 个阶段的 weeks 无效`);
+    }
+    weeks = Number(period.weeks);
+  }
+  return {
+    id: text(period.id, "id"),
+    name: text(period.name, "name"),
+    eyebrow: text(period.eyebrow, "eyebrow"),
+    start,
+    end,
+    weeks,
+    type: period.type,
+    nextLabel: period.nextLabel === undefined ? undefined : text(period.nextLabel, "nextLabel"),
+  };
+}
+
+export function parseCalendarDocument(value: unknown): CalendarDocument {
+  const document = record(value);
+  if (!document) throw new Error("校历文件必须是 JSON 对象");
+  if (!Array.isArray(document.periods) || document.periods.length === 0) {
+    throw new Error("校历文件至少要有一个阶段");
+  }
+  const periods = document.periods.map(parsePeriod).sort((left, right) => left.start.localeCompare(right.start));
+  const source = record(document.source);
+  return {
+    timezone: "Asia/Shanghai",
+    source: {
+      name: source ? text(source.name, "source.name") : "自定义校历",
+      document: source ? text(source.document, "source.document") : "自定义校历",
+      url: source && typeof source.url === "string" ? source.url : "",
+      note: source && typeof source.note === "string"
+        ? source.note
+        : "节假日与个别学校安排可能调整，请以学校最新通知为准。",
+    },
+    periods,
+  };
+}
+
+const defaultCalendar = parseCalendarDocument(calendarFile);
+
+export const calendarSource = defaultCalendar.source;
+
+export const periods: SchoolPeriod[] = defaultCalendar.periods;
 
 export function dateFromKey(key: string) {
   return new Date(`${key}T00:00:00+08:00`);
@@ -218,11 +230,11 @@ export function calendarCacheControl(requestedDate: string, now = new Date()) {
   return `public, max-age=0, s-maxage=${sMaxAge}, stale-while-revalidate=60`;
 }
 
-export function findActivePeriod(today: string) {
+export function findActivePeriod(today: string, calendarPeriods: SchoolPeriod[] = periods) {
   return (
-    periods.find((period) => today >= period.start && today <= period.end) ??
-    periods.find((period) => today < period.start) ??
-    periods[periods.length - 1]
+    calendarPeriods.find((period) => today >= period.start && today <= period.end) ??
+    calendarPeriods.find((period) => today < period.start) ??
+    calendarPeriods[calendarPeriods.length - 1]
   );
 }
 
@@ -247,8 +259,11 @@ function periodDays(period: SchoolPeriod, today: string) {
   return { totalDays, elapsedDays, remainingDays };
 }
 
-export function calendarSnapshot(today: string): CalendarSnapshot {
-  const current = findActivePeriod(today);
+export function calendarSnapshot(
+  today: string,
+  calendarPeriods: SchoolPeriod[] = periods,
+): CalendarSnapshot {
+  const current = findActivePeriod(today, calendarPeriods);
   const range: CalendarSnapshot["range"] =
     today >= current.start && today <= current.end
       ? "active"
@@ -260,7 +275,7 @@ export function calendarSnapshot(today: string): CalendarSnapshot {
   const phase = phaseOf(current);
 
   if (range === "upcoming") {
-    const previous = periods[periods.indexOf(current) - 1];
+    const previous = calendarPeriods[calendarPeriods.indexOf(current) - 1];
     const daysUntilStart = Math.max(0, diffDays(today, current.start));
     return {
       date: today,
@@ -310,7 +325,7 @@ export function calendarSnapshot(today: string): CalendarSnapshot {
     };
   }
 
-  const nextPeriod = periods[periods.indexOf(current) + 1] ?? null;
+  const nextPeriod = calendarPeriods[calendarPeriods.indexOf(current) + 1] ?? null;
   const primaryValue =
     current.type === "term"
       ? elapsedDays

@@ -1,0 +1,82 @@
+{
+  "timezone": "Asia/Shanghai",
+  "source": {
+    "name": "上海市教育委员会",
+    "document": "上海市中小学2026学年校历",
+    "url": "https://edu.sh.gov.cn/xxgk2_zdgz_jcjy_05/20260605/19ca2cb2e10a47fe86047bcc0bfdd0e8.html",
+    "note": "节假日与个别学校安排可能调整，请以学校最新通知为准。"
+  },
+  "periods": [
+    {
+      "id": "term-2025-1",
+      "name": "第一学期",
+      "eyebrow": "2025 学年",
+      "start": "2025-09-01",
+      "end": "2026-01-30",
+      "weeks": 22,
+      "type": "term"
+    },
+    {
+      "id": "winter-2026",
+      "name": "寒假",
+      "eyebrow": "2025 学年",
+      "start": "2026-01-31",
+      "end": "2026-03-01",
+      "type": "vacation",
+      "nextLabel": "春季开学"
+    },
+    {
+      "id": "term-2025-2",
+      "name": "第二学期",
+      "eyebrow": "2025 学年",
+      "start": "2026-03-02",
+      "end": "2026-06-30",
+      "weeks": 18,
+      "type": "term"
+    },
+    {
+      "id": "summer-2026",
+      "name": "暑假",
+      "eyebrow": "2025 学年",
+      "start": "2026-07-01",
+      "end": "2026-08-31",
+      "type": "vacation",
+      "nextLabel": "秋季开学"
+    },
+    {
+      "id": "term-2026-1",
+      "name": "第一学期",
+      "eyebrow": "2026 学年",
+      "start": "2026-09-01",
+      "end": "2027-01-22",
+      "weeks": 21,
+      "type": "term"
+    },
+    {
+      "id": "winter-2027",
+      "name": "寒假",
+      "eyebrow": "2026 学年",
+      "start": "2027-01-23",
+      "end": "2027-02-21",
+      "type": "vacation",
+      "nextLabel": "春季开学"
+    },
+    {
+      "id": "term-2026-2",
+      "name": "第二学期",
+      "eyebrow": "2026 学年",
+      "start": "2027-02-22",
+      "end": "2027-06-30",
+      "weeks": 19,
+      "type": "term"
+    },
+    {
+      "id": "summer-2027",
+      "name": "暑假",
+      "eyebrow": "2026 学年",
+      "start": "2027-07-01",
+      "end": "2027-08-31",
+      "type": "vacation"
+    }
+  ]
+}

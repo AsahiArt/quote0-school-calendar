@@ -1,3 +1,4 @@
+import { calendarOptionsFromProcess } from "../../../../lib/load-calendar";
 import {
   canvasApi,
   corsOptions,
@@ -8,6 +9,7 @@ const landingUrl = process.env.NEXT_PUBLIC_LANDING_URL ?? DEFAULT_LANDING_URL;
 
 export function GET(request: Request) {
   return canvasApi(request, {
+    ...calendarOptionsFromProcess(),
     landingUrl,
     apiBaseUrl: new URL(request.url).origin,
   });

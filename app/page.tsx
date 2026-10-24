@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   calendarSnapshot,
+  calendarSource,
   formatShortDate,
+  parseCalendarDocument,
   periods,
   shanghaiDateKey,
   weekdayLabel,
   type CalendarSnapshot,
+  type SchoolPeriod,
 } from "../lib/school-calendar";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
@@ -18,9 +21,11 @@ function apiHref(path: string) {
   return `${API_BASE_URL}${path}`;
 }
 
-function schoolYears() {
+const STORED_CALENDAR_KEY = "quote0-school-calendar";
+
+function schoolYears(calendarPeriods: SchoolPeriod[]) {
   const years: string[] = [];
-  for (const period of periods) {
+  for (const period of calendarPeriods) {
     if (!years.includes(period.eyebrow)) years.push(period.eyebrow);
   }
   return years;
@@ -31,13 +36,13 @@ function inVisibleMonth(date: string, year: number, month: number) {
   return dateYear === year && dateMonth === month;
 }
 
-function monthMarkers(year: number, month: number) {
+function monthMarkers(year: number, month: number, calendarPeriods: SchoolPeriod[]) {
   const markers: Record<string, string> = {};
   const add = (date: string, label: string) => {
     if (inVisibleMonth(date, year, month) && !markers[date]) markers[date] = label;
   };
 
-  for (const period of periods) {
+  for (const period of calendarPeriods) {
     if (period.type === "term") {
       add(period.start, "开学");
       add(period.end, "结课");
@@ -101,7 +106,7 @@ function EndpointCard({
   );
 }
 
-function Calendar({ todayKey }: { todayKey: string }) {
+function Calendar({ todayKey, calendarPeriods }: { todayKey: string; calendarPeriods: SchoolPeriod[] }) {
   const [year, month, today] = todayKey.split("-").map(Number);
   const firstDay = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
@@ -109,7 +114,7 @@ function Calendar({ todayKey }: { todayKey: string }) {
     const day = index - firstDay + 1;
     return day > 0 && day <= daysInMonth ? day : null;
   });
-  const markers = monthMarkers(year, month);
+  const markers = monthMarkers(year, month, calendarPeriods);
 
   return (
     <section className="calendar-card" aria-labelledby="calendar-title">
@@ -151,21 +156,91 @@ export default function Home() {
   const [todayKey, setTodayKey] = useState(() => shanghaiDateKey());
   const [selectedEyebrow, setSelectedEyebrow] = useState<string | null>(null);
   const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
+  const [calendar, setCalendar] = useState(() => ({
+    periods,
+    source: calendarSource,
+    custom: false,
+  }));
+  const [calendarError, setCalendarError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  function applyCalendar(document: ReturnType<typeof parseCalendarDocument>, custom: boolean) {
+    setCalendar({ periods: document.periods, source: document.source, custom });
+    setCalendarError("");
+    setSelectedEyebrow(null);
+    setSelectedTermId(null);
+  }
+
+  async function replaceCalendar(file: File) {
+    try {
+      const document = parseCalendarDocument(JSON.parse(await file.text()));
+      window.localStorage.setItem(STORED_CALENDAR_KEY, JSON.stringify(document));
+      applyCalendar(document, true);
+    } catch (error) {
+      setCalendarError(error instanceof Error ? error.message : "校历文件无效");
+    }
+  }
+
+  function resetCalendar() {
+    window.localStorage.removeItem(STORED_CALENDAR_KEY);
+    window.location.reload();
+  }
 
   useEffect(() => {
     const timer = window.setInterval(() => setTodayKey(shanghaiDateKey()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const snapshot = useMemo(() => calendarSnapshot(todayKey), [todayKey]);
+  useEffect(() => {
+    const saved = window.localStorage.getItem(STORED_CALENDAR_KEY);
+    if (saved) {
+      try {
+        const document = parseCalendarDocument(JSON.parse(saved));
+        setCalendar({ periods: document.periods, source: document.source, custom: true });
+        return;
+      } catch {
+        window.localStorage.removeItem(STORED_CALENDAR_KEY);
+      }
+    }
+
+    const candidates = [
+      API_BASE_URL ? `${API_BASE_URL}/api/calendar-data` : "",
+      "api/calendar-data",
+      "school-calendar.json",
+    ].filter(Boolean);
+    let cancelled = false;
+    (async () => {
+      for (const url of candidates) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          const document = parseCalendarDocument(await response.json());
+          if (!cancelled) {
+            setCalendar({ periods: document.periods, source: document.source, custom: false });
+          }
+          return;
+        } catch {
+          // Try the next calendar source.
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const snapshot = useMemo(
+    () => calendarSnapshot(todayKey, calendar.periods),
+    [todayKey, calendar.periods],
+  );
   const { display, phase } = snapshot;
   const progress = display.progressPercent;
-  const years = schoolYears();
+  const years = schoolYears(calendar.periods);
   const defaultEyebrow =
-    periods.find((period) => period.eyebrow.replace(" ", "") === snapshot.schoolYear)?.eyebrow
+    calendar.periods.find((period) => period.eyebrow.replace(" ", "") === snapshot.schoolYear)?.eyebrow
     ?? years[0];
-  const activeEyebrow = selectedEyebrow ?? defaultEyebrow;
-  const yearPeriods = periods.filter((period) => period.eyebrow === activeEyebrow);
+  const activeEyebrow = years.includes(selectedEyebrow ?? "") ? selectedEyebrow : defaultEyebrow;
+  const yearPeriods = calendar.periods.filter((period) => period.eyebrow === activeEyebrow);
   const yearTerms = yearPeriods.filter((period) => period.type === "term");
   const activeTerm =
     yearTerms.find((term) => term.id === selectedTermId) ?? yearTerms[0];
@@ -294,7 +369,7 @@ export default function Home() {
         </section>
 
         <div className="content-grid">
-          <Calendar todayKey={todayKey} />
+          <Calendar todayKey={todayKey} calendarPeriods={calendar.periods} />
 
           <section className="term-card" aria-labelledby="term-title">
             <div className="card-heading">
@@ -460,16 +535,34 @@ export default function Home() {
           <div>
             <strong>校历说明</strong>
             <p>
-              日期依据上海市教育委员会《上海市中小学 2026 学年校历》。节假日与个别学校安排可能调整，请以学校最新通知为准。
+              {calendar.custom
+                ? `正在使用本机校历「${calendar.source.document}」。只影响这个浏览器，不会改变 Quote/0 上的数据。`
+                : `日期依据${calendar.source.name}《${calendar.source.document}》。${calendar.source.note}`}
             </p>
+            <div className="calendar-replace">
+              <button type="button" onClick={() => fileRef.current?.click()}>替换校历</button>
+              {calendar.custom && (
+                <button type="button" onClick={resetCalendar}>恢复默认</button>
+              )}
+              <input
+                ref={fileRef}
+                type="file"
+                accept="application/json,.json"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void replaceCalendar(file);
+                  event.target.value = "";
+                }}
+              />
+              {calendarError && <small>{calendarError}</small>}
+            </div>
           </div>
-          <a
-            href="https://edu.sh.gov.cn/xxgk2_zdgz_jcjy_05/20260605/19ca2cb2e10a47fe86047bcc0bfdd0e8.html"
-            target="_blank"
-            rel="noreferrer"
-          >
-            查看来源 <span aria-hidden="true">↗</span>
-          </a>
+          {calendar.source.url ? (
+            <a href={calendar.source.url} target="_blank" rel="noreferrer">
+              查看来源 <span aria-hidden="true">↗</span>
+            </a>
+          ) : <span />}
         </section>
       </div>
 

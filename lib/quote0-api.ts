@@ -1,4 +1,9 @@
 import {
+  calendarIsOverridden,
+  loadCalendarDocument,
+  type CalendarLoadOptions,
+} from "./load-calendar";
+import {
   calendarCacheControl,
   calendarSnapshot,
   formatShortDate,
@@ -8,9 +13,6 @@ import {
 
 export const DEFAULT_LANDING_URL =
   "https://asahiart.github.io/quote0-school-calendar/";
-
-const SOURCE_URL =
-  "https://edu.sh.gov.cn/xxgk2_zdgz_jcjy_05/20260605/19ca2cb2e10a47fe86047bcc0bfdd0e8.html";
 
 const jsonHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,7 +38,27 @@ function invalidDateResponse(message: string) {
   );
 }
 
-export function calendarApi(request: Request) {
+function calendarError(error: unknown) {
+  const message = error instanceof Error ? error.message : "校历文件无效";
+  return Response.json(
+    { error: { code: "invalid_calendar", message } },
+    { status: 500, headers: noStoreHeaders },
+  );
+}
+
+async function calendarFor(options: CalendarLoadOptions) {
+  return loadCalendarDocument(options);
+}
+
+export async function calendarDataApi(options: CalendarLoadOptions = {}) {
+  try {
+    return Response.json(await calendarFor(options), { headers: noStoreHeaders });
+  } catch (error) {
+    return calendarError(error);
+  }
+}
+
+export async function calendarApi(request: Request, options: CalendarLoadOptions = {}) {
   const date = requestedDate(request);
 
   if (!isDateKey(date)) {
@@ -45,22 +67,24 @@ export function calendarApi(request: Request) {
     );
   }
 
-  return Response.json(
-    {
-      schemaVersion: 1,
-      generatedAt: new Date().toISOString(),
-      region: { code: "CN-SH", name: "上海" },
-      audience: "primary_and_secondary_schools",
-      ...calendarSnapshot(date),
-      source: {
-        name: "上海市教育委员会",
-        document: "上海市中小学2026学年校历",
-        url: SOURCE_URL,
-        note: "节假日与个别学校安排可能调整，请以学校最新通知为准。",
+  try {
+    const calendar = await calendarFor(options);
+    return Response.json(
+      {
+        schemaVersion: 1,
+        generatedAt: new Date().toISOString(),
+        region: { code: "CN-SH", name: "上海" },
+        audience: "primary_and_secondary_schools",
+        ...calendarSnapshot(date, calendar.periods),
+        source: calendar.source,
       },
-    },
-    { headers: calendarJsonHeaders(date) },
-  );
+      {
+        headers: calendarIsOverridden(options) ? noStoreHeaders : calendarJsonHeaders(date),
+      },
+    );
+  } catch (error) {
+    return calendarError(error);
+  }
 }
 
 function calendarJsonHeaders(date: string) {
@@ -235,12 +259,12 @@ function canvasTemplate() {
   };
 }
 
-type CanvasApiOptions = {
+type CanvasApiOptions = CalendarLoadOptions & {
   landingUrl?: string;
   apiBaseUrl?: string;
 };
 
-export function canvasApi(request: Request, options: CanvasApiOptions = {}) {
+export async function canvasApi(request: Request, options: CanvasApiOptions = {}) {
   const date = requestedDate(request);
 
   if (!isDateKey(date)) {
@@ -249,7 +273,13 @@ export function canvasApi(request: Request, options: CanvasApiOptions = {}) {
 
   const landingUrl = (options.landingUrl ?? DEFAULT_LANDING_URL).replace(/\/$/, "");
   const apiBaseUrl = (options.apiBaseUrl ?? landingUrl).replace(/\/$/, "");
-  const snapshot = calendarSnapshot(date);
+  let snapshot;
+  try {
+    const calendar = await calendarFor(options);
+    snapshot = calendarSnapshot(date, calendar.periods);
+  } catch (error) {
+    return calendarError(error);
+  }
   const detail =
     snapshot.range === "upcoming"
       ? "尚未开学"
@@ -291,7 +321,9 @@ export function canvasApi(request: Request, options: CanvasApiOptions = {}) {
         dataEndpoint: `${apiBaseUrl}/api/calendar`,
       },
     },
-    { headers: calendarJsonHeaders(date) },
+    {
+      headers: calendarIsOverridden(options) ? noStoreHeaders : calendarJsonHeaders(date),
+    },
   );
 }
 
