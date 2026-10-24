@@ -19,6 +19,7 @@ test("server-renders the school calendar landing page", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>沪上校历｜Quote\/0 上海中小学校历插件<\/title>/);
+  assert.match(html, /按 Canvas 布局等比预览，296 × 152/);
   assert.match(html, /官方接入所需接口，已经就绪/);
   assert.match(html, /待官方审核/);
   assert.doesNotMatch(html, /href="\/api\/calendar"/);

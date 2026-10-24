@@ -6,7 +6,7 @@ import {
 import {
   calendarCacheControl,
   calendarSnapshot,
-  formatShortDate,
+  canvasDisplay,
   isDateKey,
   shanghaiDateKey,
 } from "./school-calendar";
@@ -280,36 +280,13 @@ export async function canvasApi(request: Request, options: CanvasApiOptions = {}
   } catch (error) {
     return calendarError(error);
   }
-  const detail =
-    snapshot.range === "upcoming"
-      ? "尚未开学"
-      : snapshot.range === "ended"
-        ? "校历未收录"
-        : snapshot.display.teachingWeek
-          ? `第 ${snapshot.display.teachingWeek} 周 · 学期进度`
-          : `${snapshot.phase.name}进度`;
-  const nextEvent =
-    snapshot.range === "ended"
-      ? "请更新学年数据"
-      : snapshot.nextEvent
-        ? `${formatShortDate(snapshot.nextEvent.date).slice(5)} ${snapshot.nextEvent.label}`
-        : `${formatShortDate(snapshot.phase.end).slice(5)} 结束`;
+  const view = canvasDisplay(snapshot);
 
   return Response.json(
     {
       refreshNow: false,
       taskAlias: "沪上校历",
-      data: {
-        date: formatShortDate(snapshot.date),
-        phase: snapshot.phase.name,
-        primaryLabel: snapshot.display.primaryLabel,
-        primaryValue: snapshot.display.primaryValue,
-        secondaryLabel: snapshot.display.secondaryLabel,
-        secondaryValue: snapshot.display.secondaryValue,
-        progress: snapshot.display.progressPercent,
-        detail,
-        nextEvent,
-      },
+      data: view,
       windowData: canvasTemplate(),
       layoutFull: { tw: "p-[10px]" },
       link: landingUrl,

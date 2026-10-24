@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   calendarSnapshot,
   calendarSource,
+  canvasDisplay,
   formatShortDate,
   parseCalendarDocument,
   periods,
@@ -103,6 +104,43 @@ function EndpointCard({
     <a className="endpoint-card" href={href} target="_blank" rel="noreferrer">
       {body}
     </a>
+  );
+}
+
+function QuoteScreen({ view }: { view: ReturnType<typeof canvasDisplay> }) {
+  return (
+    <div
+      className="quote-screen"
+      role="img"
+      aria-label={`Quote/0 布局预览，${view.primaryLabel}${view.primaryValue}天`}
+    >
+      <div className="qs-head">
+        <span>沪上校历 · {view.phase}</span>
+        <span>{view.date}</span>
+      </div>
+      <div className="qs-rule" />
+      <div className="qs-body">
+        <div className="qs-primary">
+          <span>{view.primaryLabel}</span>
+          <strong>{view.primaryValue}<small>天</small></strong>
+        </div>
+        <div className="qs-vrule" />
+        <div className="qs-side">
+          <span>{view.secondaryLabel}</span>
+          <strong>{view.secondaryValue} 天</strong>
+          <span>{view.detail}</span>
+          <div className="qs-progress">
+            <i />
+            <b>{view.progress}%</b>
+          </div>
+          <span>{view.nextEvent}</span>
+        </div>
+      </div>
+      <div className="qs-foot">
+        <span>上海市教委校历</span>
+        <span>QUOTE / SCHOOL</span>
+      </div>
+    </div>
   );
 }
 
@@ -444,6 +482,14 @@ export default function Home() {
         </div>
 
         <section className="plugin-section" id="install" aria-labelledby="plugin-title">
+          <figure className="quote-preview">
+            <div className="quote-bezel">
+              <QuoteScreen view={canvasDisplay(snapshot)} />
+            </div>
+            <figcaption>
+              按 Canvas 布局等比预览，296 × 152。官网没有可复用的设备外框；设备字体是 Chill Duan Sans，这里用系统黑体近似。
+            </figcaption>
+          </figure>
           <div className="plugin-intro">
             <p className="section-kicker">QUOTE/0 PLUGIN</p>
             <h2 id="plugin-title">把开学倒计时，<br />放进 296 × 152。</h2>
