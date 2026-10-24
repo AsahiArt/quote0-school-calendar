@@ -11,6 +11,7 @@ export type SchoolPeriod = {
 
 export type CalendarSnapshot = {
   date: string;
+  range: "active" | "upcoming" | "ended";
   timezone: "Asia/Shanghai";
   schoolYear: string;
   phase: {
@@ -115,10 +116,6 @@ export const periods: SchoolPeriod[] = [
   },
 ];
 
-export const termCards = periods.filter(
-  (period) => period.type === "term" && period.eyebrow === "2026 学年",
-);
-
 export function dateFromKey(key: string) {
   return new Date(`${key}T00:00:00+08:00`);
 }
@@ -162,6 +159,65 @@ export function weekdayLabel(key: string) {
   }).format(dateFromKey(key));
 }
 
+const SHANGHAI_WEEKDAY_OFFSET: Record<string, number> = {
+  Mon: 0,
+  Tue: 1,
+  Wed: 2,
+  Thu: 3,
+  Fri: 4,
+  Sat: 5,
+  Sun: 6,
+};
+
+const ERROR_CACHE_CONTROL =
+  "public, max-age=0, s-maxage=21600, stale-while-revalidate=86400";
+
+function shanghaiWeekdayOffset(key: string) {
+  // Midnight +08:00 is the previous UTC date, so Date#getUTCDay() is wrong here.
+  const weekday = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    weekday: "short",
+  })
+    .formatToParts(dateFromKey(key))
+    .find((part) => part.type === "weekday")?.value;
+  const offset = weekday ? SHANGHAI_WEEKDAY_OFFSET[weekday] : undefined;
+  if (offset === undefined) {
+    throw new Error(`Unable to resolve Asia/Shanghai weekday for ${key}`);
+  }
+  return offset;
+}
+
+function mondayOnOrBefore(key: string) {
+  return shanghaiDateKey(
+    new Date(dateFromKey(key).getTime() - shanghaiWeekdayOffset(key) * DAY),
+  );
+}
+
+function teachingWeekFor(period: SchoolPeriod, today: string) {
+  if (period.type !== "term") return null;
+  const week =
+    Math.floor(diffDays(mondayOnOrBefore(period.start), today) / 7) + 1;
+  return Math.min(period.weeks ?? week, week);
+}
+
+function secondsUntilNextShanghaiMidnight(now: Date) {
+  const nextMidnight = dateFromKey(shanghaiDateKey(new Date(now.getTime() + DAY)));
+  return Math.max(0, Math.ceil((nextMidnight.getTime() - now.getTime()) / 1000));
+}
+
+export function calendarCacheControl(requestedDate: string, now = new Date()) {
+  if (!isDateKey(requestedDate)) return ERROR_CACHE_CONTROL;
+  if (requestedDate !== shanghaiDateKey(now)) {
+    return "public, max-age=86400, s-maxage=604800";
+  }
+
+  const sMaxAge = Math.min(
+    3600,
+    Math.max(60, secondsUntilNextShanghaiMidnight(now)),
+  );
+  return `public, max-age=0, s-maxage=${sMaxAge}, stale-while-revalidate=60`;
+}
+
 export function findActivePeriod(today: string) {
   return (
     periods.find((period) => today >= period.start && today <= period.end) ??
@@ -170,18 +226,90 @@ export function findActivePeriod(today: string) {
   );
 }
 
-export function calendarSnapshot(today: string): CalendarSnapshot {
-  const current = findActivePeriod(today);
-  const totalDays = inclusiveDays(current.start, current.end);
+function phaseOf(period: SchoolPeriod): CalendarSnapshot["phase"] {
+  return {
+    id: period.id,
+    name: period.name,
+    type: period.type,
+    start: period.start,
+    end: period.end,
+    weeks: period.weeks ?? null,
+  };
+}
+
+function periodDays(period: SchoolPeriod, today: string) {
+  const totalDays = inclusiveDays(period.start, period.end);
   const elapsedDays = Math.min(
     totalDays,
-    Math.max(0, inclusiveDays(current.start, today)),
+    Math.max(0, inclusiveDays(period.start, today)),
   );
-  const remainingDays = Math.max(0, diffDays(today, current.end));
-  const progressPercent = Math.min(
-    100,
-    Math.max(0, Math.round((elapsedDays / totalDays) * 100)),
-  );
+  const remainingDays = Math.max(0, diffDays(today, period.end));
+  return { totalDays, elapsedDays, remainingDays };
+}
+
+export function calendarSnapshot(today: string): CalendarSnapshot {
+  const current = findActivePeriod(today);
+  const range: CalendarSnapshot["range"] =
+    today >= current.start && today <= current.end
+      ? "active"
+      : today < current.start
+        ? "upcoming"
+        : "ended";
+  const { totalDays, elapsedDays, remainingDays } = periodDays(current, today);
+  const schoolYear = current.eyebrow.replace(" ", "");
+  const phase = phaseOf(current);
+
+  if (range === "upcoming") {
+    const previous = periods[periods.indexOf(current) - 1];
+    const daysUntilStart = Math.max(0, diffDays(today, current.start));
+    return {
+      date: today,
+      range,
+      timezone: "Asia/Shanghai",
+      schoolYear,
+      phase,
+      display: {
+        primaryLabel: current.type === "term" ? "距开学" : `距${current.name}`,
+        primaryValue: daysUntilStart,
+        primaryUnit: "天",
+        secondaryLabel: "阶段共",
+        secondaryValue: totalDays,
+        elapsedDays,
+        remainingDays,
+        progressPercent: 0,
+        teachingWeek: null,
+      },
+      nextEvent: {
+        label: previous?.nextLabel ?? current.name,
+        date: current.start,
+        daysAway: daysUntilStart,
+      },
+    };
+  }
+
+  if (range === "ended") {
+    const daysSinceEnd = Math.max(0, diffDays(current.end, today));
+    return {
+      date: today,
+      range,
+      timezone: "Asia/Shanghai",
+      schoolYear,
+      phase,
+      display: {
+        primaryLabel: "结束后",
+        primaryValue: daysSinceEnd,
+        primaryUnit: "天",
+        secondaryLabel: "超出收录",
+        secondaryValue: daysSinceEnd,
+        elapsedDays,
+        remainingDays,
+        progressPercent: 100,
+        teachingWeek: null,
+      },
+      nextEvent: null,
+    };
+  }
+
   const nextPeriod = periods[periods.indexOf(current) + 1] ?? null;
   const primaryValue =
     current.type === "term"
@@ -198,23 +326,13 @@ export function calendarSnapshot(today: string): CalendarSnapshot {
   const secondaryLabel =
     current.type === "term" ? "距学期结束" : `${current.name}第`;
   const secondaryValue = current.type === "term" ? remainingDays : elapsedDays;
-  const teachingWeek =
-    current.type === "term"
-      ? Math.min(current.weeks ?? 1, Math.ceil(elapsedDays / 7))
-      : null;
 
   return {
     date: today,
+    range,
     timezone: "Asia/Shanghai",
-    schoolYear: current.eyebrow.replace(" ", ""),
-    phase: {
-      id: current.id,
-      name: current.name,
-      type: current.type,
-      start: current.start,
-      end: current.end,
-      weeks: current.weeks ?? null,
-    },
+    schoolYear,
+    phase,
     display: {
       primaryLabel,
       primaryValue,
@@ -223,8 +341,11 @@ export function calendarSnapshot(today: string): CalendarSnapshot {
       secondaryValue,
       elapsedDays,
       remainingDays,
-      progressPercent,
-      teachingWeek,
+      progressPercent: Math.min(
+        100,
+        Math.max(0, Math.round((elapsedDays / totalDays) * 100)),
+      ),
+      teachingWeek: teachingWeekFor(current, today),
     },
     nextEvent: nextPeriod
       ? {

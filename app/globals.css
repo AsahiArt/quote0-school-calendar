@@ -466,6 +466,10 @@ a {
   border-radius: 3px;
 }
 
+.term-switch + .term-switch {
+  margin-top: 12px;
+}
+
 .term-switch button {
   flex: 1;
   padding: 10px;
@@ -655,7 +659,7 @@ a {
   border-left: 1px solid var(--ink);
 }
 
-.endpoint-grid a {
+.endpoint-grid .endpoint-card {
   min-width: 0;
   min-height: 205px;
   display: flex;
@@ -668,11 +672,11 @@ a {
   transition: background-color 160ms ease;
 }
 
-.endpoint-grid a:hover {
+.endpoint-grid a.endpoint-card:hover {
   background: rgba(213, 255, 55, 0.28);
 }
 
-.endpoint-grid a > span {
+.endpoint-grid .endpoint-card > span {
   color: var(--muted);
   font-family: ui-monospace, "SFMono-Regular", monospace;
   font-size: 8px;
@@ -930,7 +934,7 @@ footer {
     grid-template-columns: 1fr;
   }
 
-  .endpoint-grid a {
+  .endpoint-grid .endpoint-card {
     min-height: 170px;
   }
 

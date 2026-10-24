@@ -21,8 +21,10 @@ test("server-renders the school calendar landing page", async () => {
   assert.match(html, /<title>沪上校历｜Quote\/0 上海中小学校历插件<\/title>/);
   assert.match(html, /官方接入所需接口，已经就绪/);
   assert.match(html, /待官方审核/);
-  assert.match(html, /href="\/api\/calendar"/);
-  assert.match(html, /href="\/api\/quote0\/canvas"/);
+  assert.doesNotMatch(html, /href="\/api\/calendar"/);
+  assert.doesNotMatch(html, /href="\/api\/quote0\/canvas"/);
+  assert.match(html, /GET \/api\/calendar/);
+  assert.match(html, /GET \/api\/quote0\/canvas/);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape/);
 });
 
@@ -30,7 +32,8 @@ test("calendar API returns a stable Shanghai school-calendar snapshot", async ()
   const response = await request("/api/calendar?date=2026-08-13", "application/json");
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("access-control-allow-origin"), "*");
-  assert.match(response.headers.get("cache-control") ?? "", /s-maxage=21600/);
+  assert.match(response.headers.get("cache-control") ?? "", /s-maxage=\d+/);
+  assert.doesNotMatch(response.headers.get("cache-control") ?? "", /s-maxage=21600/);
 
   const body = await response.json();
   assert.equal(body.schemaVersion, 1);

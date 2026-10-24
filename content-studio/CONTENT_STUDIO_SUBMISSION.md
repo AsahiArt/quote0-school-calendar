@@ -30,6 +30,7 @@
 - 响应：`application/json; charset=utf-8`
 - CORS：允许跨域读取，托管站点已公开
 - 建议刷新：每 6 小时；最短拉取间隔 1 小时
+- 未指定日期的响应缓存至下一个上海午夜，最长 1 小时
 - 错误响应：无效日期返回 HTTP 400 与稳定的 `error.code`
 - 示例：[`calendar-response-example.json`](calendar-response-example.json)
 

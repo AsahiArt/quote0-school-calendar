@@ -4,15 +4,101 @@ import { useEffect, useMemo, useState } from "react";
 import {
   calendarSnapshot,
   formatShortDate,
+  periods,
   shanghaiDateKey,
-  termCards,
   weekdayLabel,
+  type CalendarSnapshot,
 } from "../lib/school-calendar";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
 
+type SnapshotRange = CalendarSnapshot["range"];
+
 function apiHref(path: string) {
   return `${API_BASE_URL}${path}`;
+}
+
+function schoolYears() {
+  const years: string[] = [];
+  for (const period of periods) {
+    if (!years.includes(period.eyebrow)) years.push(period.eyebrow);
+  }
+  return years;
+}
+
+function inVisibleMonth(date: string, year: number, month: number) {
+  const [dateYear, dateMonth] = date.split("-").map(Number);
+  return dateYear === year && dateMonth === month;
+}
+
+function monthMarkers(year: number, month: number) {
+  const markers: Record<string, string> = {};
+  const add = (date: string, label: string) => {
+    if (inVisibleMonth(date, year, month) && !markers[date]) markers[date] = label;
+  };
+
+  for (const period of periods) {
+    if (period.type === "term") {
+      add(period.start, "开学");
+      add(period.end, "结课");
+    } else {
+      add(period.start, period.name);
+    }
+  }
+  return markers;
+}
+
+function rangeStatus(range: SnapshotRange, phaseName: string) {
+  if (range === "upcoming") return "尚未开学";
+  if (range === "ended") return "校历未收录";
+  return `${phaseName}进行中`;
+}
+
+function heroNote(
+  range: SnapshotRange,
+  phase: { name: string; type: "term" | "vacation"; start: string },
+  display: { elapsedDays: number; remainingDays: number },
+  progress: number,
+) {
+  if (range === "upcoming") {
+    return `${phase.name}尚未开始，开始日期是 ${formatShortDate(phase.start)}。`;
+  }
+  if (range === "ended") {
+    return "当前日期已超出已收录校历，后续安排尚未收录。";
+  }
+  if (phase.type === "term") {
+    return `本学期已进行 ${display.elapsedDays} 天，距离学期结束还有 ${display.remainingDays} 天。`;
+  }
+  return `${phase.name}第 ${display.elapsedDays} 天，已经走过 ${progress}%。`;
+}
+
+function EndpointCard({
+  href,
+  kicker,
+  title,
+  code,
+  detail,
+}: {
+  href?: string;
+  kicker: string;
+  title: string;
+  code: string;
+  detail: string;
+}) {
+  const body = (
+    <>
+      <span>{kicker}</span>
+      <strong>{title}</strong>
+      <code>{code}</code>
+      <small>{detail}</small>
+    </>
+  );
+  if (!href) return <div className="endpoint-card">{body}</div>;
+  return (
+    <a className="endpoint-card" href={href} target="_blank" rel="noreferrer">
+      {body}
+    </a>
+  );
 }
 
 function Calendar({ todayKey }: { todayKey: string }) {
@@ -23,13 +109,7 @@ function Calendar({ todayKey }: { todayKey: string }) {
     const day = index - firstDay + 1;
     return day > 0 && day <= daysInMonth ? day : null;
   });
-
-  const markers: Record<string, string> = {
-    "2026-09-01": "开学",
-    "2027-01-22": "结课",
-    "2027-02-22": "开学",
-    "2027-06-30": "结课",
-  };
+  const markers = monthMarkers(year, month);
 
   return (
     <section className="calendar-card" aria-labelledby="calendar-title">
@@ -69,7 +149,8 @@ function Calendar({ todayKey }: { todayKey: string }) {
 
 export default function Home() {
   const [todayKey, setTodayKey] = useState(() => shanghaiDateKey());
-  const [selectedTerm, setSelectedTerm] = useState(termCards[0].id);
+  const [selectedEyebrow, setSelectedEyebrow] = useState<string | null>(null);
+  const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setTodayKey(shanghaiDateKey()), 60_000);
@@ -79,7 +160,15 @@ export default function Home() {
   const snapshot = useMemo(() => calendarSnapshot(todayKey), [todayKey]);
   const { display, phase } = snapshot;
   const progress = display.progressPercent;
-  const activeTerm = termCards.find((term) => term.id === selectedTerm) ?? termCards[0];
+  const years = schoolYears();
+  const defaultEyebrow =
+    periods.find((period) => period.eyebrow.replace(" ", "") === snapshot.schoolYear)?.eyebrow
+    ?? years[0];
+  const activeEyebrow = selectedEyebrow ?? defaultEyebrow;
+  const yearPeriods = periods.filter((period) => period.eyebrow === activeEyebrow);
+  const yearTerms = yearPeriods.filter((period) => period.type === "term");
+  const activeTerm =
+    yearTerms.find((term) => term.id === selectedTermId) ?? yearTerms[0];
 
   return (
     <main>
@@ -105,7 +194,7 @@ export default function Home() {
             <div className="status-line">
               <span>{snapshot.schoolYear}</span>
               <span className="divider" />
-              <span>{phase.name}进行中</span>
+              <span>{rangeStatus(snapshot.range, phase.name)}</span>
             </div>
             <p className="today-line">
               {formatShortDate(todayKey)} · {weekdayLabel(todayKey)}
@@ -116,9 +205,7 @@ export default function Home() {
               天
             </h1>
             <p className="hero-note">
-              {phase.type === "term"
-                ? `本学期已进行 ${display.elapsedDays} 天，距离学期结束还有 ${display.remainingDays} 天。`
-                : `${phase.name}第 ${display.elapsedDays} 天，已经走过 ${progress}%。`}
+              {heroNote(snapshot.range, phase, display, progress)}
             </p>
 
             <div className="hero-actions">
@@ -153,7 +240,7 @@ export default function Home() {
           <aside className="ink-panel" aria-label="今日概览">
             <div className="ink-topline">
               <span>QUOTE / SCHOOL</span>
-              <span>{String(new Date().getFullYear()).slice(-2)}</span>
+              <span>{todayKey.slice(2, 4)}</span>
             </div>
             <div className="ink-main">
               <span className="ink-label">{display.primaryLabel}</span>
@@ -173,15 +260,29 @@ export default function Home() {
             <strong>{phase.name}</strong>
           </div>
           <div>
-            <span>{phase.type === "term" ? "当前教学周" : "假期进度"}</span>
+            <span>
+              {snapshot.range !== "active"
+                ? "阶段状态"
+                : phase.type === "term"
+                  ? "当前教学周"
+                  : "假期进度"}
+            </span>
             <strong>
-              {phase.type === "term"
-                ? `第 ${display.teachingWeek} 周`
-                : `${progress}%`}
+              {snapshot.range !== "active"
+                ? rangeStatus(snapshot.range, phase.name)
+                : phase.type === "term"
+                  ? `第 ${display.teachingWeek} 周`
+                  : `${progress}%`}
             </strong>
           </div>
           <div>
-            <span>{snapshot.nextEvent ? "下一节点" : "本阶段结束"}</span>
+            <span>
+              {snapshot.range === "ended"
+                ? "收录截止"
+                : snapshot.nextEvent
+                  ? "下一节点"
+                  : "本阶段结束"}
+            </span>
             <strong>
               {formatShortDate(snapshot.nextEvent?.date ?? phase.end)}
             </strong>
@@ -199,60 +300,70 @@ export default function Home() {
             <div className="card-heading">
               <div>
                 <p className="section-kicker">TERM PLAN</p>
-                <h2 id="term-title">2026 学年</h2>
+                <h2 id="term-title">{activeEyebrow}</h2>
               </div>
               <span className="official-chip">官方校历</span>
             </div>
 
+            <div className="term-switch" role="tablist" aria-label="选择学年">
+              {years.map((eyebrow) => (
+                <button
+                  key={eyebrow}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeEyebrow === eyebrow}
+                  onClick={() => setSelectedEyebrow(eyebrow)}
+                >
+                  {eyebrow}
+                </button>
+              ))}
+            </div>
+
             <div className="term-switch" role="tablist" aria-label="选择学期">
-              {termCards.map((term) => (
+              {yearTerms.map((term) => (
                 <button
                   key={term.id}
                   type="button"
                   role="tab"
-                  aria-selected={selectedTerm === term.id}
-                  onClick={() => setSelectedTerm(term.id)}
+                  aria-selected={activeTerm?.id === term.id}
+                  onClick={() => setSelectedTermId(term.id)}
                 >
                   {term.name}
                 </button>
               ))}
             </div>
 
-            <div className="term-detail">
-              <div className="term-number">
-                <strong>{activeTerm.weeks}</strong>
-                <span>教学周</span>
-              </div>
-              <div className="term-dates">
-                <div>
-                  <span>开学</span>
-                  <strong>{formatShortDate(activeTerm.start)}</strong>
+            {activeTerm && (
+              <div className="term-detail">
+                <div className="term-number">
+                  <strong>{activeTerm.weeks}</strong>
+                  <span>教学周</span>
                 </div>
-                <i aria-hidden="true" />
-                <div>
-                  <span>结束</span>
-                  <strong>{formatShortDate(activeTerm.end)}</strong>
+                <div className="term-dates">
+                  <div>
+                    <span>开学</span>
+                    <strong>{formatShortDate(activeTerm.start)}</strong>
+                  </div>
+                  <i aria-hidden="true" />
+                  <div>
+                    <span>结束</span>
+                    <strong>{formatShortDate(activeTerm.end)}</strong>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
 
             <div className="milestones">
-              <div>
-                <span className="milestone-dot is-filled" />
-                <p><strong>秋季开学</strong><small>2026.09.01</small></p>
-              </div>
-              <div>
-                <span className="milestone-dot" />
-                <p><strong>寒假开始</strong><small>2027.01.23</small></p>
-              </div>
-              <div>
-                <span className="milestone-dot" />
-                <p><strong>春季开学</strong><small>2027.02.22</small></p>
-              </div>
-              <div>
-                <span className="milestone-dot" />
-                <p><strong>暑假开始</strong><small>2027.07.01</small></p>
-              </div>
+              {yearPeriods.map((period) => {
+                const label = period.type === "term" ? `${period.name}开学` : `${period.name}开始`;
+                const filled = period.start <= todayKey;
+                return (
+                  <div key={period.id}>
+                    <span className={filled ? "milestone-dot is-filled" : "milestone-dot"} />
+                    <p><strong>{label}</strong><small>{formatShortDate(period.start)}</small></p>
+                  </div>
+                );
+              })}
             </div>
           </section>
         </div>
@@ -315,32 +426,31 @@ export default function Home() {
           </p>
 
           <div className="endpoint-grid">
-            <a href={apiHref("/api/calendar")} target="_blank" rel="noreferrer">
-              <span>01 · REST DATA</span>
-              <strong>校历数据 API</strong>
-              <code>GET /api/calendar</code>
-              <small>当前阶段、倒计时、教学周、进度与下一节点</small>
-            </a>
-            <a href={apiHref("/api/quote0/canvas")} target="_blank" rel="noreferrer">
-              <span>02 · CANVAS</span>
-              <strong>Quote/0 布局</strong>
-              <code>GET /api/quote0/canvas</code>
-              <small>原生 windowData、展示数据与点击落地页</small>
-            </a>
-            <a
+            <EndpointCard
+              href={API_BASE_URL ? apiHref("/api/calendar") : undefined}
+              kicker="01 · REST DATA"
+              title="校历数据 API"
+              code="GET /api/calendar"
+              detail="当前阶段、倒计时、教学周、进度与下一节点"
+            />
+            <EndpointCard
+              href={API_BASE_URL ? apiHref("/api/quote0/canvas") : undefined}
+              kicker="02 · CANVAS"
+              title="Quote/0 布局"
+              code="GET /api/quote0/canvas"
+              detail="原生 windowData、展示数据与点击落地页"
+            />
+            <EndpointCard
               href="https://dot.mindreset.tech/docs/service/studio/join-content-studio"
-              target="_blank"
-              rel="noreferrer"
-            >
-              <span>03 · REVIEW</span>
-              <strong>Content Studio</strong>
-              <code>材料包已准备</code>
-              <small>图标、内容说明、接口示例与设备适配信息</small>
-            </a>
+              kicker="03 · REVIEW"
+              title="Content Studio"
+              code="材料包已准备"
+              detail="图标、内容说明、接口示例与设备适配信息"
+            />
           </div>
 
           <div className="integration-footer">
-            <span><i aria-hidden="true" /> API 可独立部署 · 无需认证 · 6 小时缓存</span>
+            <span><i aria-hidden="true" /> API 可独立部署 · 无需认证 · 缓存至上海零点</span>
             <span>适配 Quote/0 · 296 × 152</span>
           </div>
         </section>

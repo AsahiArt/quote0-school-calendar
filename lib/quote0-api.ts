@@ -1,4 +1,5 @@
 import {
+  calendarCacheControl,
   calendarSnapshot,
   formatShortDate,
   isDateKey,
@@ -58,8 +59,15 @@ export function calendarApi(request: Request) {
         note: "节假日与个别学校安排可能调整，请以学校最新通知为准。",
       },
     },
-    { headers: jsonHeaders },
+    { headers: calendarJsonHeaders(date) },
   );
+}
+
+function calendarJsonHeaders(date: string) {
+  return {
+    ...jsonHeaders,
+    "Cache-Control": calendarCacheControl(date),
+  };
 }
 
 function canvasTemplate() {
@@ -242,12 +250,20 @@ export function canvasApi(request: Request, options: CanvasApiOptions = {}) {
   const landingUrl = (options.landingUrl ?? DEFAULT_LANDING_URL).replace(/\/$/, "");
   const apiBaseUrl = (options.apiBaseUrl ?? landingUrl).replace(/\/$/, "");
   const snapshot = calendarSnapshot(date);
-  const detail = snapshot.display.teachingWeek
-    ? `第 ${snapshot.display.teachingWeek} 周 · 学期进度`
-    : `${snapshot.phase.name}进度`;
-  const nextEvent = snapshot.nextEvent
-    ? `${formatShortDate(snapshot.nextEvent.date).slice(5)} ${snapshot.nextEvent.label}`
-    : `${formatShortDate(snapshot.phase.end).slice(5)} 结束`;
+  const detail =
+    snapshot.range === "upcoming"
+      ? "尚未开学"
+      : snapshot.range === "ended"
+        ? "校历未收录"
+        : snapshot.display.teachingWeek
+          ? `第 ${snapshot.display.teachingWeek} 周 · 学期进度`
+          : `${snapshot.phase.name}进度`;
+  const nextEvent =
+    snapshot.range === "ended"
+      ? "请更新学年数据"
+      : snapshot.nextEvent
+        ? `${formatShortDate(snapshot.nextEvent.date).slice(5)} ${snapshot.nextEvent.label}`
+        : `${formatShortDate(snapshot.phase.end).slice(5)} 结束`;
 
   return Response.json(
     {
@@ -275,7 +291,7 @@ export function canvasApi(request: Request, options: CanvasApiOptions = {}) {
         dataEndpoint: `${apiBaseUrl}/api/calendar`,
       },
     },
-    { headers: jsonHeaders },
+    { headers: calendarJsonHeaders(date) },
   );
 }
 
