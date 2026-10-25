@@ -102,7 +102,7 @@ function calendarJsonHeaders(date: string) {
 }
 
 function progressFillWidth(progress: number) {
-  const innerWidth = 56;
+  const innerWidth = 70;
   return Math.max(0, Math.min(innerWidth, Math.round((innerWidth * progress) / 100)));
 }
 
@@ -117,12 +117,11 @@ function canvasTemplate(progress: number) {
             {
               type: "div",
               props: {
-                tw: "flex flex-row items-center justify-between shrink-0 text-9-chillduansans",
+                tw: "flex flex-row items-center justify-between shrink-0 text-12-chillduansans font-bold",
                 children: [
                   {
                     type: "span",
                     props: {
-                      tw: "font-bold",
                       children:
                         "沪上校历 · {{get inputData \"phase\" default=\"校历\"}}",
                     },
@@ -153,7 +152,7 @@ function canvasTemplate(progress: number) {
                         {
                           type: "span",
                           props: {
-                            tw: "text-11-chillduansans font-bold",
+                            tw: "text-14-chillduansans font-bold",
                             children:
                               "{{get inputData \"primaryLabel\" default=\"今日\"}}",
                           },
@@ -174,7 +173,7 @@ function canvasTemplate(progress: number) {
                               {
                                 type: "span",
                                 props: {
-                                  tw: "text-11-chillduansans font-bold pb-[4px]",
+                                  tw: "text-14-chillduansans font-bold pb-[6px]",
                                   children: "天",
                                 },
                               },
@@ -191,12 +190,12 @@ function canvasTemplate(progress: number) {
                   {
                     type: "div",
                     props: {
-                      tw: "flex flex-col flex-[2] min-w-0 justify-center gap-[5px]",
+                      tw: "flex flex-col flex-[2] min-w-0 justify-center gap-[4px]",
                       children: [
                         {
                           type: "span",
                           props: {
-                            tw: "text-9-chillduansans",
+                            tw: "text-12-chillduansans font-bold",
                             children:
                               "{{get inputData \"secondaryLabel\" default=\"进度\"}}",
                           },
@@ -204,7 +203,7 @@ function canvasTemplate(progress: number) {
                         {
                           type: "span",
                           props: {
-                            tw: "text-20-chillduansans font-bold leading-none",
+                            tw: "text-24-chillduansans font-bold leading-none",
                             children:
                               "{{get inputData \"secondaryValue\" default=\"--\"}} 天",
                           },
@@ -212,7 +211,7 @@ function canvasTemplate(progress: number) {
                         {
                           type: "span",
                           props: {
-                            tw: "text-9-chillduansans",
+                            tw: "text-12-chillduansans font-bold",
                             children:
                               "{{get inputData \"detail\" default=\"上海中小学\"}}",
                           },
@@ -220,12 +219,12 @@ function canvasTemplate(progress: number) {
                         {
                           type: "div",
                           props: {
-                            tw: "flex flex-row items-center gap-[4px]",
+                            tw: "flex flex-row items-center gap-[6px]",
                             children: [
                               {
                                 type: "div",
                                 props: {
-                                  tw: "w-[58px] h-[5px] border border-black box-border overflow-hidden",
+                                  tw: "w-[72px] h-[8px] border border-black box-border overflow-hidden",
                                   children: {
                                     type: "div",
                                     props: {
@@ -238,7 +237,7 @@ function canvasTemplate(progress: number) {
                               {
                                 type: "span",
                                 props: {
-                                  tw: "text-8-chillduansans font-bold",
+                                  tw: "text-12-chillduansans font-bold",
                                   children:
                                     "{{get inputData \"progress\" default=\"0\"}}%",
                                 },
@@ -249,7 +248,7 @@ function canvasTemplate(progress: number) {
                         {
                           type: "span",
                           props: {
-                            tw: "text-8-chillduansans",
+                            tw: "text-12-chillduansans font-bold",
                             children:
                               "{{get inputData \"nextEvent\" default=\"\"}}",
                           },
@@ -257,16 +256,6 @@ function canvasTemplate(progress: number) {
                       ],
                     },
                   },
-                ],
-              },
-            },
-            {
-              type: "div",
-              props: {
-                tw: "flex flex-row items-center justify-between shrink-0 text-8-chillduansans",
-                children: [
-                  { type: "span", props: { children: "上海市教委校历" } },
-                  { type: "span", props: { children: "QUOTE / SCHOOL" } },
                 ],
               },
             },

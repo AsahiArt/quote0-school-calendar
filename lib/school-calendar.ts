@@ -282,8 +282,8 @@ export function canvasDisplay(snapshot: CalendarSnapshot) {
       : snapshot.range === "ended"
         ? "校历未收录"
         : snapshot.display.teachingWeek
-          ? `第 ${snapshot.display.teachingWeek} 周 · 学期进度`
-          : `${snapshot.phase.name}进度`;
+          ? `第 ${snapshot.display.teachingWeek} 周`
+          : snapshot.phase.name;
   const nextEvent =
     snapshot.range === "ended"
       ? "请更新学年数据"

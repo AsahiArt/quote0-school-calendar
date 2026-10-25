@@ -138,10 +138,6 @@ function QuoteScreen({ view }: { view: ReturnType<typeof canvasDisplay> }) {
           <span>{view.nextEvent}</span>
         </div>
       </div>
-      <div className="qs-foot">
-        <span>上海市教委校历</span>
-        <span>QUOTE / SCHOOL</span>
-      </div>
     </div>
   );
 }
