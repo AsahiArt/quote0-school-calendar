@@ -94,7 +94,12 @@ function calendarJsonHeaders(date: string) {
   };
 }
 
-function canvasTemplate() {
+function progressFillWidth(progress: number) {
+  const innerWidth = 56;
+  return Math.max(0, Math.min(innerWidth, Math.round((innerWidth * progress) / 100)));
+}
+
+function canvasTemplate(progress: number) {
   return {
     default: [
       {
@@ -213,8 +218,14 @@ function canvasTemplate() {
                               {
                                 type: "div",
                                 props: {
-                                  tw: "w-[58px] h-[5px] border border-black",
-                                  children: "",
+                                  tw: "w-[58px] h-[5px] border border-black box-border overflow-hidden",
+                                  children: {
+                                    type: "div",
+                                    props: {
+                                      tw: `h-full bg-black w-[${progressFillWidth(progress)}px]`,
+                                      children: "",
+                                    },
+                                  },
                                 },
                               },
                               {
@@ -287,7 +298,7 @@ export async function canvasApi(request: Request, options: CanvasApiOptions = {}
       refreshNow: false,
       taskAlias: "沪上校历",
       data: view,
-      windowData: canvasTemplate(),
+      windowData: canvasTemplate(view.progress),
       layoutFull: { tw: "p-[10px]" },
       link: landingUrl,
       border: 0,

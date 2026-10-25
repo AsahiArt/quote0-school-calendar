@@ -130,7 +130,7 @@ function QuoteScreen({ view }: { view: ReturnType<typeof canvasDisplay> }) {
           <strong>{view.secondaryValue} 天</strong>
           <span>{view.detail}</span>
           <div className="qs-progress">
-            <i />
+            <i><span style={{ width: `${view.progress}%` }} /></i>
             <b>{view.progress}%</b>
           </div>
           <span>{view.nextEvent}</span>

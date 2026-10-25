@@ -832,9 +832,18 @@ a {
 }
 
 .qs-progress i {
+  display: block;
   width: calc(58 / 296 * 100cqw);
   height: calc(5 / 296 * 100cqw);
   border: 1px solid #000;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.qs-progress i span {
+  display: block;
+  height: 100%;
+  background: #000;
 }
 
 .qs-progress b,
