@@ -26,6 +26,11 @@ const noStoreHeaders = {
   "Cache-Control": "no-store",
 };
 
+const calendarDataHeaders = {
+  ...jsonHeaders,
+  "Cache-Control": "public, max-age=3600, s-maxage=86400",
+};
+
 function requestedDate(request: Request) {
   const url = new URL(request.url);
   return url.searchParams.get("date") ?? shanghaiDateKey();
@@ -52,7 +57,9 @@ async function calendarFor(options: CalendarLoadOptions) {
 
 export async function calendarDataApi(options: CalendarLoadOptions = {}) {
   try {
-    return Response.json(await calendarFor(options), { headers: noStoreHeaders });
+    return Response.json(await calendarFor(options), {
+      headers: calendarIsOverridden(options) ? noStoreHeaders : calendarDataHeaders,
+    });
   } catch (error) {
     return calendarError(error);
   }

@@ -1,8 +1,8 @@
-import { calendarOptionsFromProcess } from "../../../lib/load-calendar";
+import { nodeCalendarOptions } from "../../../lib/read-calendar-file";
 import { calendarDataApi, corsOptions } from "../../../lib/quote0-api";
 
 export function GET() {
-  return calendarDataApi(calendarOptionsFromProcess());
+  return calendarDataApi(nodeCalendarOptions());
 }
 
 export const OPTIONS = corsOptions;

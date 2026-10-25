@@ -28,6 +28,8 @@ jobs:
         with:
           node-version: 22
       - run: bun install --frozen-lockfile
+      - name: Run unit tests
+        run: bun run test:unit
       - name: Check deployment credentials
         id: credentials
         shell: bash

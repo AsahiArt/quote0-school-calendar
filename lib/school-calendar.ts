@@ -44,6 +44,8 @@ export type CalendarSnapshot = {
 
 const DAY = 86_400_000;
 
+export const MAX_CALENDAR_BYTES = 256_000;
+
 export type CalendarSource = {
   name: string;
   document: string;
@@ -107,6 +109,16 @@ export function parseCalendarDocument(value: unknown): CalendarDocument {
     throw new Error("校历文件至少要有一个阶段");
   }
   const periods = document.periods.map(parsePeriod).sort((left, right) => left.start.localeCompare(right.start));
+  const seenIds = new Set<string>();
+  for (let index = 0; index < periods.length; index += 1) {
+    const period = periods[index];
+    if (seenIds.has(period.id)) throw new Error(`阶段 id 重复：${period.id}`);
+    seenIds.add(period.id);
+    const previous = periods[index - 1];
+    if (previous && period.start <= previous.end) {
+      throw new Error(`阶段 ${previous.id} 与 ${period.id} 日期重叠`);
+    }
+  }
   const source = record(document.source);
   return {
     timezone: "Asia/Shanghai",
@@ -212,9 +224,13 @@ function teachingWeekFor(period: SchoolPeriod, today: string) {
   return Math.min(period.weeks ?? week, week);
 }
 
-function secondsUntilNextShanghaiMidnight(now: Date) {
+export function millisecondsUntilNextShanghaiDate(now = new Date()) {
   const nextMidnight = dateFromKey(shanghaiDateKey(new Date(now.getTime() + DAY)));
-  return Math.max(0, Math.ceil((nextMidnight.getTime() - now.getTime()) / 1000));
+  return Math.max(0, nextMidnight.getTime() - now.getTime());
+}
+
+function secondsUntilNextShanghaiMidnight(now: Date) {
+  return Math.ceil(millisecondsUntilNextShanghaiDate(now) / 1000);
 }
 
 export function calendarCacheControl(requestedDate: string, now = new Date()) {

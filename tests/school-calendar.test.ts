@@ -86,6 +86,44 @@ test("a replacement calendar is parsed and used without the built-in periods", (
   });
 });
 
+test("replacement calendars reject duplicate ids and overlapping dates", () => {
+  const term = {
+    id: "a",
+    name: "学期",
+    eyebrow: "2028 学年",
+    start: "2028-02-01",
+    end: "2028-06-30",
+    type: "term",
+  };
+  assert.throws(
+    () => parseCalendarDocument({ periods: [term, { ...term }] }),
+    /阶段 id 重复：a/,
+  );
+  assert.throws(
+    () => parseCalendarDocument({
+      periods: [
+        term,
+        {
+          ...term,
+          id: "b",
+          name: "暑假",
+          start: "2028-06-30",
+          end: "2028-07-31",
+          type: "vacation",
+        },
+      ],
+    }),
+    /日期重叠/,
+  );
+  const gapped = parseCalendarDocument({
+    periods: [
+      { ...term, id: "later", start: "2028-09-01", end: "2028-12-31" },
+      term,
+    ],
+  });
+  assert.deepEqual(gapped.periods.map((period) => period.id), ["a", "later"]);
+});
+
 test("calendarCacheControl keeps other dates long and today until Shanghai midnight", () => {
   const now = dateFromKey("2026-08-13");
   assert.equal(

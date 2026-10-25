@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   calendarSnapshot,
   calendarSource,
   canvasDisplay,
   formatShortDate,
+  MAX_CALENDAR_BYTES,
   parseCalendarDocument,
   periods,
-  shanghaiDateKey,
   weekdayLabel,
+  type CalendarDocument,
   type CalendarSnapshot,
   type SchoolPeriod,
 } from "../lib/school-calendar";
+import { useShanghaiToday } from "./today";
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
 
@@ -144,15 +146,34 @@ function QuoteScreen({ view }: { view: ReturnType<typeof canvasDisplay> }) {
   );
 }
 
+function periodOn(date: string, calendarPeriods: SchoolPeriod[]) {
+  return calendarPeriods.find((period) => date >= period.start && date <= period.end);
+}
+
 function Calendar({ todayKey, calendarPeriods }: { todayKey: string; calendarPeriods: SchoolPeriod[] }) {
-  const [year, month, today] = todayKey.split("-").map(Number);
-  const firstDay = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const [todayYear, todayMonth, today] = todayKey.split("-").map(Number);
+  const [view, setView] = useState<{ year: number; month: number } | null>(null);
+  const year = view?.year ?? todayYear;
+  const month = view?.month ?? todayMonth;
+  const showingToday = year === todayYear && month === todayMonth;
+  const firstWeekday = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const leading = (firstWeekday + 6) % 7;
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const cells = Array.from({ length: 42 }, (_, index) => {
-    const day = index - firstDay + 1;
+  const cellCount = Math.ceil((leading + daysInMonth) / 7) * 7;
+  const cells = Array.from({ length: cellCount }, (_, index) => {
+    const day = index - leading + 1;
     return day > 0 && day <= daysInMonth ? day : null;
   });
   const markers = monthMarkers(year, month, calendarPeriods);
+
+  function showMonth(delta: number) {
+    setView((current) => {
+      const baseYear = current?.year ?? todayYear;
+      const baseMonth = current?.month ?? todayMonth;
+      const next = new Date(Date.UTC(baseYear, baseMonth - 1 + delta, 1));
+      return { year: next.getUTCFullYear(), month: next.getUTCMonth() + 1 };
+    });
+  }
 
   return (
     <section className="calendar-card" aria-labelledby="calendar-title">
@@ -161,24 +182,37 @@ function Calendar({ todayKey, calendarPeriods }: { todayKey: string; calendarPer
           <p className="section-kicker">MONTH VIEW</p>
           <h2 id="calendar-title">{year} 年 {month} 月</h2>
         </div>
-        <span className="today-chip">今天 · {today} 日</span>
+        <button
+          type="button"
+          className="today-chip"
+          onClick={() => setView(null)}
+          disabled={showingToday}
+        >
+          今天 · {today} 日
+        </button>
+      </div>
+
+      <div className="month-nav" role="group" aria-label="切换月份">
+        <button type="button" onClick={() => showMonth(-1)}>上一月</button>
+        <button type="button" onClick={() => showMonth(1)}>下一月</button>
       </div>
 
       <div className="calendar-grid weekday-row" aria-hidden="true">
-        {['日', '一', '二', '三', '四', '五', '六'].map((day) => (
+        {["一", "二", "三", "四", "五", "六", "日"].map((day) => (
           <span key={day}>{day}</span>
         ))}
       </div>
       <div className="calendar-grid days-grid">
         {cells.map((day, index) => {
           const key = day
-            ? `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-            : '';
+            ? `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+            : "";
           const marker = markers[key];
+          const period = key ? periodOn(key, calendarPeriods) : undefined;
           return (
             <div
-              className={`calendar-day ${day === today ? 'is-today' : ''} ${marker ? 'has-marker' : ''}`}
-              key={`${index}-${day ?? 'blank'}`}
+              className={`calendar-day${showingToday && day === today ? " is-today" : ""}${period ? ` is-${period.type}` : ""}${marker ? " has-marker" : ""}`}
+              key={`${index}-${day ?? "blank"}`}
             >
               {day && <span>{day}</span>}
               {marker && <small>{marker}</small>}
@@ -186,61 +220,126 @@ function Calendar({ todayKey, calendarPeriods }: { todayKey: string; calendarPer
           );
         })}
       </div>
+      <div className="calendar-legend">
+        <span><i className="is-term" aria-hidden="true" />学期</span>
+        <span><i className="is-vacation" aria-hidden="true" />假期</span>
+      </div>
     </section>
   );
 }
 
+const calendarListeners = new Set<() => void>();
+let storedCalendarRaw: string | null | undefined;
+
+function emitStoredCalendar() {
+  for (const listener of calendarListeners) listener();
+}
+
+function readStoredCalendar() {
+  if (storedCalendarRaw === undefined) {
+    try {
+      storedCalendarRaw = window.localStorage.getItem(STORED_CALENDAR_KEY);
+    } catch {
+      storedCalendarRaw = null;
+    }
+  }
+  return storedCalendarRaw;
+}
+
+function subscribeStoredCalendar(onChange: () => void) {
+  calendarListeners.add(onChange);
+  return () => {
+    calendarListeners.delete(onChange);
+  };
+}
+
+function writeStoredCalendar(value: string | null) {
+  if (value === null) window.localStorage.removeItem(STORED_CALENDAR_KEY);
+  else window.localStorage.setItem(STORED_CALENDAR_KEY, value);
+  storedCalendarRaw = value;
+  emitStoredCalendar();
+}
+
+function sameCalendar(
+  current: { periods: SchoolPeriod[]; source: CalendarDocument["source"] },
+  document: CalendarDocument,
+) {
+  return JSON.stringify(current.periods) === JSON.stringify(document.periods)
+    && JSON.stringify(current.source) === JSON.stringify(document.source);
+}
+
 export default function Home() {
-  const [todayKey, setTodayKey] = useState(() => shanghaiDateKey());
+  const todayKey = useShanghaiToday();
   const [selectedEyebrow, setSelectedEyebrow] = useState<string | null>(null);
   const [selectedTermId, setSelectedTermId] = useState<string | null>(null);
-  const [calendar, setCalendar] = useState(() => ({
-    periods,
-    source: calendarSource,
-    custom: false,
-  }));
+  const [sessionDocument, setSessionDocument] = useState<CalendarDocument | null>(null);
+  const [remoteDocument, setRemoteDocument] = useState<CalendarDocument | null>(null);
   const [calendarError, setCalendarError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const storedRaw = useSyncExternalStore(subscribeStoredCalendar, readStoredCalendar, () => null);
+  const storedDocument = useMemo(() => {
+    if (!storedRaw) return null;
+    try {
+      return parseCalendarDocument(JSON.parse(storedRaw));
+    } catch {
+      return null;
+    }
+  }, [storedRaw]);
+  const activeDocument = sessionDocument ?? storedDocument ?? remoteDocument;
+  const calendar = {
+    periods: activeDocument?.periods ?? periods,
+    source: activeDocument?.source ?? calendarSource,
+    custom: Boolean(sessionDocument || storedDocument),
+  };
 
-  function applyCalendar(document: ReturnType<typeof parseCalendarDocument>, custom: boolean) {
-    setCalendar({ periods: document.periods, source: document.source, custom });
-    setCalendarError("");
-    setSelectedEyebrow(null);
-    setSelectedTermId(null);
-  }
+  useEffect(() => {
+    if (!storedRaw || storedDocument) return;
+    try {
+      writeStoredCalendar(null);
+    } catch {
+      storedCalendarRaw = null;
+      emitStoredCalendar();
+    }
+  }, [storedRaw, storedDocument]);
 
   async function replaceCalendar(file: File) {
+    if (file.size > MAX_CALENDAR_BYTES) {
+      setCalendarError("校历文件过大");
+      return;
+    }
     try {
-      const document = parseCalendarDocument(JSON.parse(await file.text()));
-      window.localStorage.setItem(STORED_CALENDAR_KEY, JSON.stringify(document));
-      applyCalendar(document, true);
+      const text = await file.text();
+      if (text.length > MAX_CALENDAR_BYTES) {
+        setCalendarError("校历文件过大");
+        return;
+      }
+      const document = parseCalendarDocument(JSON.parse(text));
+      setSelectedEyebrow(null);
+      setSelectedTermId(null);
+      try {
+        writeStoredCalendar(JSON.stringify(document));
+        setSessionDocument(null);
+        setCalendarError("");
+      } catch {
+        setSessionDocument(document);
+        setCalendarError("这台浏览器无法保存校历，刷新后会恢复默认。");
+      }
     } catch (error) {
       setCalendarError(error instanceof Error ? error.message : "校历文件无效");
     }
   }
 
   function resetCalendar() {
-    window.localStorage.removeItem(STORED_CALENDAR_KEY);
+    try {
+      writeStoredCalendar(null);
+    } catch {
+      // The reload below returns to the built-in calendar either way.
+    }
     window.location.reload();
   }
 
   useEffect(() => {
-    const timer = window.setInterval(() => setTodayKey(shanghaiDateKey()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem(STORED_CALENDAR_KEY);
-    if (saved) {
-      try {
-        const document = parseCalendarDocument(JSON.parse(saved));
-        setCalendar({ periods: document.periods, source: document.source, custom: true });
-        return;
-      } catch {
-        window.localStorage.removeItem(STORED_CALENDAR_KEY);
-      }
-    }
-
+    if (storedRaw) return;
     const candidates = [
       API_BASE_URL ? `${API_BASE_URL}/api/calendar-data` : "",
       "api/calendar-data",
@@ -254,7 +353,10 @@ export default function Home() {
           if (!response.ok) continue;
           const document = parseCalendarDocument(await response.json());
           if (!cancelled) {
-            setCalendar({ periods: document.periods, source: document.source, custom: false });
+            setRemoteDocument((current) => {
+              const baseline = current ?? { periods, source: calendarSource };
+              return sameCalendar(baseline, document) ? current : document;
+            });
           }
           return;
         } catch {
@@ -265,7 +367,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [storedRaw]);
 
   const snapshot = useMemo(
     () => calendarSnapshot(todayKey, calendar.periods),

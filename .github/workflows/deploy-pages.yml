@@ -1,6 +1,9 @@
 name: Deploy GitHub Pages
 
 on:
+  schedule:
+    # 00:05 Asia/Shanghai. GitHub schedules run in UTC.
+    - cron: "5 16 * * *"
   push:
     branches: [main]
     paths:
@@ -37,6 +40,8 @@ jobs:
           node-version: 22
       - uses: actions/configure-pages@v5
       - run: bun install --frozen-lockfile
+      - name: Run unit tests
+        run: bun run test:unit
       - name: Build static landing page
         run: bun run build:pages
         env:

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import { shanghaiDateKey } from "../lib/school-calendar";
 import "./globals.css";
+import { BakedTodayProvider } from "./today";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://asahiart.github.io/quote0-school-calendar/"),
@@ -12,7 +14,7 @@ export const metadata: Metadata = {
     locale: "zh_CN",
     images: [
       {
-        url: "/og.png",
+        url: "/og.jpg",
         width: 1536,
         height: 1024,
         alt: "沪上校历 Quote/0 插件",
@@ -23,7 +25,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "沪上校历｜Quote/0 上海中小学校历插件",
     description: "上海中小学开学、结课与寒暑假进度。",
-    images: ["/og.png"],
+    images: ["/og.jpg"],
   },
 };
 
@@ -32,9 +34,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const today = shanghaiDateKey();
   return (
-    <html lang="zh-CN">
-      <body>{children}</body>
+    <html lang="zh-CN" data-today={today}>
+      <body>
+        <BakedTodayProvider value={today}>{children}</BakedTodayProvider>
+      </body>
     </html>
   );
 }

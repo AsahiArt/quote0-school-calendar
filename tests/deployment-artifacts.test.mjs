@@ -21,6 +21,7 @@ test("standalone Worker bundle is produced", async () => {
   );
   assert.match(worker, /quote0-school-calendar/);
   assert.match(worker, /api\/quote0\/canvas/);
+  assert.doesNotMatch(worker, /node:fs/);
 });
 
 test("Docker target exposes the full application health endpoint", async () => {
@@ -29,4 +30,7 @@ test("Docker target exposes the full application health endpoint", async () => {
   assert.match(dockerfile, /VINEXT_PLATFORM=node/);
   assert.match(dockerfile, /\/api\/health/);
   assert.match(dockerfile, /USER node/);
+  assert.match(dockerfile, /VINEXT_STANDALONE=1/);
+  assert.match(dockerfile, /dist\/standalone/);
+  assert.match(dockerfile, /CMD \["node", "server\.js"\]/);
 });

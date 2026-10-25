@@ -110,7 +110,9 @@ Canvas 负载不再另算一遍。它只把 snapshot 填进固定的 `windowData
 | 指定了其他合法日期 | 7 天 |
 | `/api/health` | 不缓存 |
 
-上海今天的响应带 `max-age=0`，浏览器不会留住它。落地页的倒计时也不走这层缓存，而是在本地调用同一份计算。
+上海今天的响应带 `max-age=0`，浏览器不会留住它。落地页的倒计时也不走这层缓存，而是在本地调用同一份计算。静态页面在构建时写入当天的数字；页面水合后改用浏览器里的上海今天，并在下一个上海零点更新。GitHub Pages 会在每天 00:05（上海）重新构建，让没有执行脚本的访问也能看到当天的数字。
+
+`GET /api/calendar-data` 在使用内置校历时缓存 1 小时，共享缓存 1 天。配置了 `CALENDAR_URL` 或 `CALENDAR_PATH` 时不缓存。`CALENDAR_URL` 出现超时、网络错误或 5xx 时，接口继续返回这个地址上一次成功拉到的校历。内容无效或 4xx 仍返回 `invalid_calendar`，不会退回内置校历。
 
 ## 替换校历
 
@@ -140,4 +142,4 @@ flowchart TD
 | Cloudflare Worker | 设置 `CALENDAR_URL` 为 https JSON 地址 |
 | GitHub Pages | 发布目录中的 `school-calendar.json`，或让页面指向已配置 `CALENDAR_URL` 的 Worker |
 
-显式替换的接口响应不缓存。文件或地址无效时，接口返回 `invalid_calendar`，不会悄悄退回默认校历。
+阶段 `id` 不能重复，日期不能重叠。区间之间的缺口仍按尚未开始处理。显式替换的接口响应不缓存。文件或地址无效时，接口返回 `invalid_calendar`，不会悄悄退回默认校历。
