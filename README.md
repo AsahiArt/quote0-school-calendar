@@ -61,6 +61,15 @@ https://asahiart.github.io/quote0-school-calendar/canvas.json
 
 构建在每天 00:05（上海）再跑一次。GitHub 的定时任务可能推迟，所以零点后的第一次刷新可能仍是前一天。
 
+同一任务可以在构建后把 `canvas.json` 推到你的 Quote/0。先在 Content Studio 添加 Canvas API 内容，再设置仓库 secrets：
+
+```text
+DOT_API_KEY
+DOT_DEVICE_ID
+```
+
+可选 `DOT_TASK_KEY` 用来指定内容项；不设置时更新该列表里的第一项。仓库变量 `DOT_TASK_TYPE` 可以是 `loop`（默认，在线时请求立即刷新）或 `fixed`（只保存，仍按 App 里的时间显示）。没有这两个 secrets 时会跳过推送。接口说明见 [Canvas API](https://dot.mindreset.tech/docs/service/open/canvas_api)。
+
 要启用页面中的 REST 和 Canvas 链接，先部署 Worker，再设置 GitHub 仓库变量：
 
 ```text

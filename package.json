@@ -14,7 +14,7 @@
     "build:worker": "wrangler deploy --dry-run --config wrangler.api.jsonc --outdir dist/worker-api",
     "deploy": "wrangler deploy --config wrangler.api.jsonc",
     "start": "vinext start",
-    "test:unit": "node --experimental-strip-types --test tests/school-calendar.test.ts tests/load-calendar.test.ts",
+    "test:unit": "node --experimental-strip-types --test tests/school-calendar.test.ts tests/load-calendar.test.ts tests/push-canvas.test.mjs",
     "test": "bun run test:unit && bun run build && node --test tests/rendered-html.test.mjs",
     "test:deploy": "bun run build:pages && bun run build:worker && node --test tests/deployment-artifacts.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler"

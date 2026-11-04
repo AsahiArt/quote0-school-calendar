@@ -46,6 +46,14 @@ jobs:
         run: bun run build:pages
         env:
           NEXT_PUBLIC_API_BASE_URL: ${{ vars.QUOTE0_API_BASE_URL }}
+      - name: Push canvas to Quote/0
+        continue-on-error: true
+        env:
+          DOT_API_KEY: ${{ secrets.DOT_API_KEY }}
+          DOT_DEVICE_ID: ${{ secrets.DOT_DEVICE_ID }}
+          DOT_TASK_TYPE: ${{ vars.DOT_TASK_TYPE }}
+          DOT_TASK_KEY: ${{ secrets.DOT_TASK_KEY }}
+        run: node scripts/push-canvas.mjs dist/pages/canvas.json
       - uses: actions/upload-pages-artifact@v4
         with:
           path: dist/pages
