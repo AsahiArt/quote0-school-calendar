@@ -48,7 +48,18 @@ GET /api/quote0/canvas?date=YYYY-MM-DD
 
 ## GitHub Pages + Cloudflare Worker
 
-合并到 `main` 后，`deploy-pages.yml` 会发布静态落地页。页面中的倒计时在浏览器本地计算，不依赖后端。
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/AsahiArt/quote0-school-calendar)
+
+按钮会把公开仓库复制到你的 GitHub 账号，再用你的 Cloudflare 账号部署 Worker。部署页里把 Build command 留空，Deploy command 保持 `wrangler deploy --config wrangler.api.jsonc`。落地页的 `build` 脚本不参与 Worker 部署。
+
+合并到 `main` 后，`deploy-pages.yml` 会发布静态落地页。页面中的倒计时在浏览器本地计算，不依赖后端。同一份构建还会写出当天的两份静态数据，设备可以直接读取，不必部署 Worker 或 Docker：
+
+```text
+https://asahiart.github.io/quote0-school-calendar/calendar.json
+https://asahiart.github.io/quote0-school-calendar/canvas.json
+```
+
+构建在每天 00:05（上海）再跑一次。GitHub 的定时任务可能推迟，所以零点后的第一次刷新可能仍是前一天。
 
 要启用页面中的 REST 和 Canvas 链接，先部署 Worker，再设置 GitHub 仓库变量：
 

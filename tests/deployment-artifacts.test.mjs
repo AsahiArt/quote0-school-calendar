@@ -12,6 +12,21 @@ test("GitHub Pages build is static and uses the repository base path", async () 
   assert.doesNotMatch(html, /chatgpt\.site/);
   await access(new URL("../dist/pages/.nojekyll", import.meta.url));
   await access(new URL("../dist/pages/_next/static", import.meta.url));
+
+  const calendar = JSON.parse(
+    await readFile(new URL("../dist/pages/calendar.json", import.meta.url), "utf8"),
+  );
+  const canvas = JSON.parse(
+    await readFile(new URL("../dist/pages/canvas.json", import.meta.url), "utf8"),
+  );
+  assert.equal(calendar.schemaVersion, 1);
+  assert.match(calendar.date, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(canvas.taskAlias, "沪上校历");
+  assert.equal(canvas.data.date.replaceAll(".", "-"), calendar.date);
+  assert.equal(
+    canvas.meta.dataEndpoint,
+    "https://asahiart.github.io/quote0-school-calendar/calendar.json",
+  );
 });
 
 test("standalone Worker bundle is produced", async () => {

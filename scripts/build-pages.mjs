@@ -33,4 +33,26 @@ await cp(
   path.join(outputDirectory, "school-calendar.json"),
 );
 
+const pagesUrl = "https://asahiart.github.io/quote0-school-calendar";
+const calendarResponse = await handler(
+  new Request("http://localhost/api/calendar", { headers: { accept: "application/json" } }),
+);
+const canvasResponse = await handler(
+  new Request("http://localhost/api/quote0/canvas", { headers: { accept: "application/json" } }),
+);
+if (!calendarResponse.ok || !canvasResponse.ok) {
+  throw new Error("Unable to render the static calendar files");
+}
+const canvas = await canvasResponse.json();
+canvas.link = `${pagesUrl}/`;
+canvas.meta.dataEndpoint = `${pagesUrl}/calendar.json`;
+await writeFile(
+  path.join(outputDirectory, "calendar.json"),
+  `${JSON.stringify(await calendarResponse.json(), null, 2)}\n`,
+);
+await writeFile(
+  path.join(outputDirectory, "canvas.json"),
+  `${JSON.stringify(canvas, null, 2)}\n`,
+);
+
 console.log(outputDirectory);

@@ -12,6 +12,7 @@
     "build:node": "VINEXT_PLATFORM=node bun run build",
     "build:pages": "GITHUB_PAGES_BASE_PATH=/quote0-school-calendar/ bun run build && node scripts/build-pages.mjs",
     "build:worker": "wrangler deploy --dry-run --config wrangler.api.jsonc --outdir dist/worker-api",
+    "deploy": "wrangler deploy --config wrangler.api.jsonc",
     "start": "vinext start",
     "test:unit": "node --experimental-strip-types --test tests/school-calendar.test.ts tests/load-calendar.test.ts",
     "test": "bun run test:unit && bun run build && node --test tests/rendered-html.test.mjs",
