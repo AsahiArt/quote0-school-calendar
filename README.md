@@ -71,7 +71,7 @@ DOT_DEVICE_ID
 
 | 名称 | 类型 | 作用 |
 | --- | --- | --- |
-| `DOT_TASK_KEY` | secret | 指定要更新的内容项。不设置时更新该列表的第一项 |
+| `DOT_TASK_KEY` | secret | 只更新这一项。不设置时更新所选列表里的全部 Canvas API 内容 |
 | `DOT_TASK_TYPE` | 仓库变量 | `loop`（默认，在线时请求立即刷新）或 `fixed`（只保存，仍按 App 里的时间显示） |
 
 ## Cloudflare Worker

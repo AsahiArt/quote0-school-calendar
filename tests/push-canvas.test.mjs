@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { canvasPushBody } from "../scripts/push-canvas.mjs";
+import { canvasPushBody, canvasTargets } from "../scripts/push-canvas.mjs";
 
 const canvas = {
   taskAlias: "沪上校历",
@@ -19,6 +19,32 @@ test("device push keeps the canvas fields and drops local metadata", () => {
   assert.equal(body.taskKey, "card-1");
   assert.equal(body.data, canvas.data);
   assert.equal(body.meta, undefined);
+});
+
+test("missing task key selects every Canvas API item", () => {
+  const targets = canvasTargets({
+    loop: [
+      { type: "TEXT_API", key: "text-1" },
+      { type: "CANVAS_API", key: "loop-1" },
+      { type: "CANVAS_API", key: null },
+    ],
+    fixed: [{ type: "CANVAS_API", key: "fixed-1" }],
+  });
+  assert.deepEqual(targets, [
+    { taskType: "loop", taskKey: "loop-1" },
+    { taskType: "fixed", taskKey: "fixed-1" },
+  ]);
+});
+
+test("a task type limits the lists that are updated", () => {
+  const targets = canvasTargets(
+    {
+      loop: [{ type: "CANVAS_API", key: "loop-1" }],
+      fixed: [{ type: "CANVAS_API", key: "fixed-1" }],
+    },
+    { taskType: "fixed" },
+  );
+  assert.deepEqual(targets, [{ taskType: "fixed", taskKey: "fixed-1" }]);
 });
 
 test("fixed content is saved without requesting an immediate refresh", () => {
